@@ -2,8 +2,11 @@ name: Release Alpha
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   build-and-release:
@@ -24,19 +27,36 @@ jobs:
         with:
           gradle-version: 8.7
 
+      - name: Determine project version
+        id: project_version
+        run: echo "value=$(gradle -q printVersion)" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve release metadata
+        id: release_meta
+        env:
+          VERSION: ${{ steps.project_version.outputs.value }}
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG_NAME="${GITHUB_REF_NAME}"
+          else
+            TAG_NAME="v${VERSION}"
+          fi
+          echo "tag=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "body=release_notes/${TAG_NAME}.md" >> "$GITHUB_OUTPUT"
+          echo "display_version=${VERSION}" >> "$GITHUB_OUTPUT"
+
       - name: Build project
         run: gradle clean test installDist
 
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: ncipollo/release-action@v1
         with:
-          name: ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
+          tag: ${{ steps.release_meta.outputs.tag }}
+          name: Alpha ${{ steps.release_meta.outputs.display_version }}
           draft: false
           prerelease: true
-          body_path: release_notes/${{ github.ref_name }}.md
-          files: |
+          allowUpdates: true
+          bodyFile: ${{ steps.release_meta.outputs.body }}
+          artifacts: |
             build/libs/*.jar
             build/distributions/*.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

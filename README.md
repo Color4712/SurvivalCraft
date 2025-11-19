@@ -40,22 +40,15 @@ We are actively working on core systems and mechanics.
    ```
 
 ### 📦 Downloadable release for players
-- Відкрий розділ **Releases** на GitHub і знайди тег `v0.0.1-alpha`.
+- CI автоматично створює/оновлює пререліз `v0.0.1-alpha` при кожному пуші в `main`, тож вкладка **Releases** більше не буде пустою.
 - Завантаж **SurvivalCraft-0.0.1-alpha.zip** (скрипти запуску для Windows/Linux/macOS) або `SurvivalCraft-0.0.1-alpha.jar`.
 - Після розпакування архіву запускай двійковий файл з `bin/` (Linux/macOS: `./SurvivalCraft`, Windows: `SurvivalCraft.bat`).
 - Більше деталей у [release_notes/v0.0.1-alpha.md](release_notes/v0.0.1-alpha.md).
 
 ### 🚀 Publishing alpha 0.0.1 to GitHub Releases
-1. Ensure your branch is up to date on GitHub.
-2. Create and push the tag for the alpha release:
-   ```bash
-   git tag v0.0.1-alpha
-   git push origin v0.0.1-alpha
-   ```
-3. The **Release Alpha** GitHub Actions workflow will:
-   - Build and test the project via Gradle
-   - Package both the runnable ZIP distribution (`build/distributions/SurvivalCraft-0.0.1-alpha.zip`) and the standalone JAR (`build/libs/SurvivalCraft-0.0.1-alpha.jar`)
-   - Publish a pre-release on GitHub Releases named after the tag (e.g., `v0.0.1-alpha`) using the matching notes from `release_notes/<tag>.md`
+1. Будь-який пуш у `main` автоматично тригерить workflow **Release Alpha**.
+2. Workflow сам зчитує версію з Gradle, збирає проєкт (`gradle clean test installDist`) і публікує/оновлює пререліз `v0.0.1-alpha` з ZIP та JAR артефактами + реліз-нотатками.
+3. Якщо треба перевидати вручну, запусти workflow через вкладку **Actions → Release Alpha → Run workflow** або створи новий тег `v*` — pipeline повторно запакує артефакти й оновить реліз.
 
 ## 👥 About the Team
 
