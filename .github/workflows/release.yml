@@ -1,0 +1,62 @@
+name: Release Alpha
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.7
+
+      - name: Determine project version
+        id: project_version
+        run: echo "value=$(gradle -q printVersion)" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve release metadata
+        id: release_meta
+        env:
+          VERSION: ${{ steps.project_version.outputs.value }}
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG_NAME="${GITHUB_REF_NAME}"
+          else
+            TAG_NAME="v${VERSION}"
+          fi
+          echo "tag=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "body=release_notes/${TAG_NAME}.md" >> "$GITHUB_OUTPUT"
+          echo "display_version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build project
+        run: gradle clean test installDist
+
+      - name: Publish GitHub release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.release_meta.outputs.tag }}
+          name: Alpha ${{ steps.release_meta.outputs.display_version }}
+          draft: false
+          prerelease: true
+          allowUpdates: true
+          bodyFile: ${{ steps.release_meta.outputs.body }}
+          artifacts: |
+            build/libs/*.jar
+            build/distributions/*.zip

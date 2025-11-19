@@ -1,0 +1,34 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.survivalcraft'
+version = '0.0.1-alpha'
+
+repositories {
+    mavenCentral()
+}
+
+application {
+    mainClass = 'com.survivalcraft.Game'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+dependencies {
+    testImplementation(platform('org.junit:junit-bom:5.10.2'))
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+tasks.register('printVersion') {
+    doLast {
+        println project.version
+    }
+}
