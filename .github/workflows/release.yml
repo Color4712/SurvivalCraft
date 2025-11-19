@@ -25,7 +25,7 @@ jobs:
           gradle-version: 8.7
 
       - name: Build project
-        run: gradle clean test assemble
+        run: gradle clean test installDist
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
@@ -34,10 +34,9 @@ jobs:
           tag_name: ${{ github.ref_name }}
           draft: false
           prerelease: true
-          body: |
-            Alpha release for SurvivalCraft ${GITHUB_REF#refs/tags/}.
-            Includes the initial console slice with basic survival systems.
+          body_path: release_notes/${{ github.ref_name }}.md
           files: |
             build/libs/*.jar
+            build/distributions/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

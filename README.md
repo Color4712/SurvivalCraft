@@ -39,6 +39,12 @@ We are actively working on core systems and mechanics.
    gradle test
    ```
 
+### 📦 Downloadable release for players
+- Відкрий розділ **Releases** на GitHub і знайди тег `v0.0.1-alpha`.
+- Завантаж **SurvivalCraft-0.0.1-alpha.zip** (скрипти запуску для Windows/Linux/macOS) або `SurvivalCraft-0.0.1-alpha.jar`.
+- Після розпакування архіву запускай двійковий файл з `bin/` (Linux/macOS: `./SurvivalCraft`, Windows: `SurvivalCraft.bat`).
+- Більше деталей у [release_notes/v0.0.1-alpha.md](release_notes/v0.0.1-alpha.md).
+
 ### 🚀 Publishing alpha 0.0.1 to GitHub Releases
 1. Ensure your branch is up to date on GitHub.
 2. Create and push the tag for the alpha release:
@@ -48,8 +54,8 @@ We are actively working on core systems and mechanics.
    ```
 3. The **Release Alpha** GitHub Actions workflow will:
    - Build and test the project via Gradle
-   - Package the JAR artifact from `build/libs/`
-   - Publish a pre-release on GitHub Releases named after the tag (e.g., `v0.0.1-alpha`)
+   - Package both the runnable ZIP distribution (`build/distributions/SurvivalCraft-0.0.1-alpha.zip`) and the standalone JAR (`build/libs/SurvivalCraft-0.0.1-alpha.jar`)
+   - Publish a pre-release on GitHub Releases named after the tag (e.g., `v0.0.1-alpha`) using the matching notes from `release_notes/<tag>.md`
 
 ## 👥 About the Team
 
