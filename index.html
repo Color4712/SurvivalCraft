@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Survival Craft: Platformer Prototype</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <header>
+        <h1>Survival Craft — Платформер</h1>
+        <p>
+          Стартовий прототип: керуй персонажем, збирай кристали та уникай
+          небезпек.
+        </p>
+      </header>
+
+      <section class="hud">
+        <div>
+          <span class="label">Кристали:</span>
+          <span id="score">0</span>
+        </div>
+        <div>
+          <span class="label">Життя:</span>
+          <span id="lives">3</span>
+        </div>
+        <div>
+          <span class="label">Підказка:</span>
+          WASD / ←→↑
+        </div>
+      </section>
+
+      <canvas id="game" width="960" height="540"></canvas>
+
+      <section class="controls">
+        <h2>Мета</h2>
+        <ul>
+          <li>Збирай кристали для прогресу.</li>
+          <li>Уникай пасток і ворогів на платформі.</li>
+          <li>Стеж за життями та повернися на чекпоінт після втрати.</li>
+        </ul>
+      </section>
+    </main>
+
+    <script src="main.js"></script>
+  </body>
+</html>
