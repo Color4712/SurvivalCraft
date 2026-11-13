@@ -160,7 +160,8 @@
   // what the person REALLY said (used only to detect the language)
   let heard = "", sessText = "", dictPartial = "", detected = null;
   let rec = null, srActive = false, speaking = false, confs = [];
-  let src = "—", srErrors = [], lastLen = 0, lvl = 0, realDb = null, gotMic = false;
+  let src = "—", srErrors = [], lastLen = 0, lvl = 0, realDb = null, gotMic = false, evLog = [], micTimer = null;
+  const logEv = m => { evLog.push(((performance.now() - startT) / 1000).toFixed(1) + "с " + m); if (evLog.length > 40) evLog.shift(); };
 
   // a speech-like bar height
   function synthBar() { const r = Math.random(); return r < 0.18 ? 0.05 + Math.random() * 0.06 : 0.3 + Math.random() * 0.62; }
@@ -211,8 +212,8 @@
       const micNode = micCtx.createMediaStreamSource(stream);
       analyser = micCtx.createAnalyser(); analyser.fftSize = 1024;
       dataArr = new Uint8Array(analyser.fftSize);
-      micNode.connect(analyser); gotMic = true;
-    } catch (e) { analyser = null; src += " · мікрофон заблоковано"; }
+      micNode.connect(analyser); gotMic = true; logEv("хвиля: мікрофон ок");
+    } catch (e) { analyser = null; src += " · мікрофон заблоковано"; logEv("хвиля: " + e.name); }
   }
   // ---------- browser speech recognition (real browser: Chrome, Safari) ----------
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -221,21 +222,23 @@
     try {
       rec = new SR();
       rec.lang = "uk-UA"; rec.continuous = true; rec.interimResults = true;
-      rec.onresult = e => {
+      rec.onstart = () => logEv("розп: start");
+      rec.onaudiostart = () => { logEv("розп: audiostart"); if (micTimer) { clearTimeout(micTimer); micTimer = null; setTimeout(tryMic, 250); } };
+      rec.onresult = e => { logEv("розп: результат «" + (e.results[e.results.length - 1][0].transcript || "").slice(-25) + "»");
         let t = "";
         for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript + " ";
         for (let i = e.resultIndex; i < e.results.length; i++)
           if (e.results[i].isFinal && e.results[i][0].confidence > 0) confs.push(e.results[i][0].confidence);
         sessText = t; onHeard(t.length);
       };
-      rec.onspeechstart = () => { speaking = true; };
+      rec.onspeechstart = () => { speaking = true; logEv("розп: speechstart"); };
       rec.onspeechend = () => { speaking = false; };
-      rec.onend = () => {
+      rec.onend = () => { logEv("розп: end");
         heard += " " + sessText; sessText = ""; speaking = false; lastLen = 0;
         if (state === "recording" && rec) { try { rec.start(); } catch(e){} }
       };
       rec.onerror = e => {
-        srErrors.push(e.error);
+        srErrors.push(e.error); logEv("розп: помилка " + e.error);
         if (["not-allowed", "service-not-allowed", "audio-capture", "network"].includes(e.error)) {
           srActive = false; rec = null;
         }
@@ -408,12 +411,13 @@
   // ---------- recording ----------
   function startRec() {
     heard = ""; sessText = ""; dictPartial = ""; detected = null; srActive = false; speaking = false; confs = [];
-    srErrors = []; lastLen = 0; lastPartial = 0; gotMic = false; src = SR ? "—" : "у цьому браузері немає розпізнавання мови";
+    srErrors = []; lastLen = 0; lastPartial = 0; gotMic = false; evLog = []; src = SR ? "—" : "у цьому браузері немає розпізнавання мови";
     if (dictation) {
       srActive = true; src = "диктування Claude";
       try { dictation.start().catch(() => { srActive = false; }); } catch(e) { srActive = false; }
-    } else startSR();
-    tryMic();
+    } else if (startSR()) {
+      micTimer = setTimeout(() => { micTimer = null; tryMic(); }, 700);
+    } else tryMic();
     beep([880, 1320]); buzz(30);
     bars = []; sim.nextSwitch = 0;
     startT = performance.now();
@@ -433,6 +437,7 @@
     live.textContent = "";
     $("meter").textContent = "16 кГц · моно";
     if (dictation) { try { dictation.stop().catch(()=>{}); } catch(e){} }
+    if (micTimer) { clearTimeout(micTimer); micTimer = null; }
     if (rec) { try { rec.stop(); } catch(e){} }
     srActive = false;
     stopMic();
@@ -570,7 +575,9 @@
   // ---------- secret diagnostics: hold "Розпізнаний текст" for 1 s ----------
   let dbgT = null;
   const dbgLabel = $("result").querySelector(".label");
-  dbgLabel.addEventListener("pointerdown", () => { dbgT = setTimeout(() => {
+  dbgLabel.addEventListener("dbgopen", () => showDbg());
+  dbgLabel.addEventListener("pointerdown", () => { dbgT = setTimeout(() => showDbg(), 1000); });
+  function showDbg() {
     const txt = (heard + " " + sessText + " " + dictPartial).trim();
     const avg = confs.length ? (confs.reduce((a, b) => a + b, 0) / confs.length).toFixed(2) : "немає";
     $("dbgText").textContent =
@@ -580,10 +587,18 @@
       "\nВпевненість: " + avg +
       "\nХвиля: " + (gotMic ? "справжня гучність з мікрофона" : "імітація (мікрофон недоступний)") +
       "\nМова: " + (detected || "не визначено → Українська за замовчуванням") +
-      "\nАдреса: " + location.protocol;
+      "\nАдреса: " + location.protocol +
+      "\n\nЖурнал:\n" + (evLog.join("\n") || "порожньо");
     show("dbg", true); buzz(15);
-  }, 1000); });
+  }
   ["pointerup", "pointerleave", "pointercancel"].forEach(e => dbgLabel.addEventListener(e, () => clearTimeout(dbgT)));
+  function openDbg() { dbgLabel.dispatchEvent(new Event("dbgopen")); }
+  dbgLabel.addEventListener("contextmenu", e => { e.preventDefault(); openDbg(); });
+  let taps = [];
+  $("meta").addEventListener("click", () => {
+    const n = performance.now(); taps = taps.filter(t => n - t < 700); taps.push(n);
+    if (taps.length >= 3) { taps = []; openDbg(); }
+  });
   $("dbgClose").addEventListener("click", () => show("dbg", false));
 
   // ---------- secret settings: hold the logo/title for 1 s ----------
