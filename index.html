@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Голосовий ввід</title>
+<style>
+  :root{
+    --bg:#0e1116; --card:#171b22; --line:#262c36; --text:#eef1f5; --muted:#8a93a3;
+    --accent:#4ade80; --rec:#ff4d5e; --blue:#60a5fa;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:radial-gradient(120% 80% at 50% 0%,#1a2230 0%,var(--bg) 60%);
+    color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex;justify-content:center;user-select:none;-webkit-user-select:none;
+  }
+  .app{width:100%;max-width:440px;display:flex;flex-direction:column;padding:18px 18px 28px;gap:16px;min-height:100%}
+  header{display:flex;justify-content:space-between;align-items:center}
+  .brand{display:flex;align-items:center;gap:10px}
+  .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#4ade80,#22c55e);display:grid;place-items:center;color:#06240f;font-weight:800}
+  .brand h1{font-size:17px;font-weight:650}
+  .brand small{display:block;font-size:11px;color:var(--muted);font-weight:500;margin-top:1px}
+  .net{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;border:1px solid var(--line);padding:5px 9px;border-radius:999px}
+  .net i{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+  .status{color:var(--muted);font-size:14px;min-height:20px;text-align:center}
+  .wave-wrap{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:14px;position:relative}
+  canvas{width:100%;height:140px;display:block}
+  .timer{position:absolute;top:12px;right:16px;font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .meter{position:absolute;top:12px;left:16px;font-size:11px;color:var(--muted)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--rec);opacity:0}
+  .recording .dot{opacity:1;animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:.25}}
+  .live{min-height:22px;font-size:15px;color:var(--muted);text-align:center;font-style:italic}
+  .center{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:4px}
+  .mic{
+    width:96px;height:96px;border-radius:50%;border:none;cursor:pointer;
+    background:linear-gradient(145deg,#2a3242,#1c222d);color:var(--text);
+    box-shadow:0 8px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+    display:grid;place-items:center;position:relative;transition:transform .15s;
+  }
+  .mic:active{transform:scale(.95)}
+  .mic svg{width:40px;height:40px}
+  .recording .mic{background:var(--rec)}
+  .recording .mic::after{content:"";position:absolute;inset:-10px;border-radius:50%;border:2px solid var(--rec);animation:pulse 1.4s ease-out infinite}
+  @keyframes pulse{from{transform:scale(.9);opacity:.9}to{transform:scale(1.35);opacity:0}}
+  .hint{font-size:13px;color:var(--muted)}
+  .actions{display:flex;gap:10px;width:100%}
+  .btn{flex:1;padding:15px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--text);font-size:15px;font-weight:600;cursor:pointer}
+  .btn.primary{background:var(--accent);color:#06240f;border-color:transparent}
+  .btn.small{padding:11px;font-size:14px}
+  .hidden{display:none!important}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:12px}
+  .label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+  .steps{display:flex;flex-direction:column;gap:9px;font-size:14px}
+  .step{display:flex;align-items:center;gap:10px;color:var(--muted);transition:color .2s}
+  .step .ic{width:18px;height:18px;display:grid;place-items:center;font-size:12px}
+  .step.active{color:var(--text)}
+  .step.done{color:var(--accent)}
+  .spin{width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .bar{height:5px;background:var(--line);border-radius:3px;overflow:hidden}
+  .bar div{height:100%;width:0;background:var(--accent);transition:width .25s}
+  .text{font-size:22px;font-weight:700;line-height:1.35;min-height:30px;user-select:text;-webkit-user-select:text}
+  .caret{display:inline-block;width:2px;height:22px;background:var(--accent);vertical-align:-4px;margin-left:2px;animation:blink .8s infinite}
+  .meta{display:flex;gap:7px;flex-wrap:wrap}
+  .chip{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 10px}
+  .segs{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}
+  .seg{display:flex;gap:12px;font-size:14px;align-items:baseline}
+  .seg time{color:var(--blue);font-variant-numeric:tabular-nums;font-size:12px;min-width:86px}
+  .seg .conf{margin-left:auto;font-size:11px;color:var(--muted)}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#2a3242;color:var(--text);padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+  .toast.show{opacity:1}
+  .sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+  .sheet .panel{width:100%;max-width:440px;background:var(--card);border-top-left-radius:20px;border-top-right-radius:20px;padding:20px 18px 26px;display:flex;flex-direction:column;gap:12px;border:1px solid var(--line)}
+  .panel label{font-size:13px;color:var(--muted)}
+  .panel select{width:100%;padding:13px;border-radius:12px;border:1px solid var(--line);background:#10141a;color:var(--text);font-size:16px}
+  .panel input{width:100%;padding:13px;border-radius:12px;border:1px solid var(--line);background:#10141a;color:var(--text);font-size:16px;user-select:text;-webkit-user-select:text}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header>
+    <div class="brand" id="brand">
+      <div class="logo">V</div>
+      <h1>VoiceText<small>Розпізнавання мовлення</small></h1>
+    </div>
+    <div class="net"><i></i>Онлайн</div>
+  </header>
+
+  <div class="status" id="status">Натисни на мікрофон і говори</div>
+
+  <div class="wave-wrap">
+    <div class="meter" id="meter">16 кГц · моно</div>
+    <div class="timer"><span class="dot"></span><span id="time">00:00</span></div>
+    <canvas id="wave"></canvas>
+  </div>
+
+  <div class="live" id="live"></div>
+
+  <div class="center" id="micBlock">
+    <button class="mic" id="mic" aria-label="Запис">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="22"/></svg>
+    </button>
+    <div class="hint" id="hint">Натисни, щоб почати запис</div>
+  </div>
+
+  <div class="actions hidden" id="actions">
+    <button class="btn" id="again">↺ Перезаписати</button>
+    <button class="btn primary" id="confirm">✓ Підтвердити</button>
+  </div>
+
+  <div class="card hidden" id="proc">
+    <div class="label">Обробка запису</div>
+    <div class="bar"><div id="progress"></div></div>
+    <div class="steps" id="steps"></div>
+  </div>
+
+  <div class="card hidden" id="result">
+    <div class="label">Розпізнаний текст</div>
+    <div class="text" id="text"></div>
+    <div class="meta hidden" id="meta"></div>
+    <div class="hidden" id="segWrap">
+      <div class="label" style="margin:6px 0 8px">Розшифровка за часом</div>
+      <div class="segs" id="segs"></div>
+    </div>
+    <div class="actions hidden" id="resActions">
+      <button class="btn small" id="listen">▶ Прослухати</button>
+      <button class="btn small" id="copy">⧉ Копіювати</button>
+    </div>
+  </div>
+
+  <button class="btn hidden" id="newRec">🎙️ Новий запис</button>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="sheet hidden" id="dbg"><div class="panel">
+  <div class="label">Діагностика (секрет)</div>
+  <div id="dbgText" style="font-size:14px;line-height:1.5;white-space:pre-wrap;user-select:text;-webkit-user-select:text"></div>
+  <button class="btn" id="dbgClose">Закрити</button>
+</div></div>
+
+<div class="sheet hidden" id="sheet">
+  <div class="panel">
+    <label for="phrase">Що «почує» програма:</label>
+    <input id="phrase" type="text">
+    <div class="actions">
+      <button class="btn" id="cancelSet">Скасувати</button>
+      <button class="btn primary" id="saveSet">Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const DEFAULT = "Я хочу удобрения";
+  let phrase = DEFAULT;
+  try { phrase = localStorage.getItem("prank_phrase") || DEFAULT; } catch(e){}
+  // what the person REALLY said (used only to detect the language)
+  let heard = "", sessText = "", dictPartial = "", detected = null;
+  let rec = null, srActive = false, speaking = false, confs = [];
+  let src = "—", srErrors = [], lastLen = 0, lvl = 0, realDb = null, gotMic = false;
+
+  // a speech-like bar height
+  function synthBar() { const r = Math.random(); return r < 0.18 ? 0.05 + Math.random() * 0.06 : 0.3 + Math.random() * 0.62; }
+  // called whenever the recognizer delivers words; text arrives ~0.5 s late,
+  // so after a silence we redraw the bars the person was already speaking over
+  function onHeard(len) {
+    const now = performance.now();
+    const wasQuiet = now - lastPartial > 650;
+    const grown = Math.max(0, len - lastLen); lastLen = len;
+    lastPartial = now; speechBoost = 1;
+    if (state === "recording" && wasQuiet && grown > 0) {
+      const ms = Math.min(1600, Math.max(450, grown * 70));
+      const n = Math.round(ms / 45);
+      for (let i = Math.max(0, bars.length - n); i < bars.length; i++)
+        if (bars[i] < 0.12) bars[i] = synthBar();
+    }
+  }
+  const langName = () => detected || "Українська";
+
+  const $ = id => document.getElementById(id);
+  const app = $("app"), canvas = $("wave"), ctx = canvas.getContext("2d");
+  const status = $("status"), hint = $("hint"), timeEl = $("time"), live = $("live");
+
+  let state = "idle";
+  let bars = [], startT = 0, duration = 0, timerId = null, liveId = null;
+  let analyser = null, stream = null, micCtx = null, dataArr = null;
+  let dictation = null, tts = null, speechBoost = 0, lastPartial = 0;
+  const sim = { env: 0, target: 0, nextSwitch: 0 };
+
+  // ---------- optional platform features ----------
+  if (window.claude && claude.use) {
+    claude.use("dictation").then(d => {
+      dictation = d;
+      if (d) {
+        d.onPartial(({text}) => { dictPartial = text || ""; onHeard(dictPartial.length); });
+        d.onFinal(({text}) => { heard += " " + (text || ""); dictPartial = ""; lastLen = 0; lastPartial = performance.now(); speechBoost = 1; });
+      }
+    }).catch(()=>{});
+    claude.use("tts").then(t => { tts = t; }).catch(()=>{});
+  }
+
+  async function tryMic() {
+    try {
+      if (stream || !navigator.mediaDevices?.getUserMedia) return;
+      if (!SR) src = "лише мікрофон, без розпізнавання";
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: false } });
+      micCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const micNode = micCtx.createMediaStreamSource(stream);
+      analyser = micCtx.createAnalyser(); analyser.fftSize = 1024;
+      dataArr = new Uint8Array(analyser.fftSize);
+      micNode.connect(analyser); gotMic = true;
+    } catch (e) { analyser = null; src += " · мікрофон заблоковано"; }
+  }
+  // ---------- browser speech recognition (real browser: Chrome, Safari) ----------
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  function startSR() {
+    if (!SR) return false;
+    try {
+      rec = new SR();
+      rec.lang = "uk-UA"; rec.continuous = true; rec.interimResults = true;
+      rec.onresult = e => {
+        let t = "";
+        for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript + " ";
+        for (let i = e.resultIndex; i < e.results.length; i++)
+          if (e.results[i].isFinal && e.results[i][0].confidence > 0) confs.push(e.results[i][0].confidence);
+        sessText = t; onHeard(t.length);
+      };
+      rec.onspeechstart = () => { speaking = true; };
+      rec.onspeechend = () => { speaking = false; };
+      rec.onend = () => {
+        heard += " " + sessText; sessText = ""; speaking = false; lastLen = 0;
+        if (state === "recording" && rec) { try { rec.start(); } catch(e){} }
+      };
+      rec.onerror = e => {
+        srErrors.push(e.error);
+        if (["not-allowed", "service-not-allowed", "audio-capture", "network"].includes(e.error)) {
+          srActive = false; rec = null;
+        }
+      };
+      rec.start(); srActive = true; src = "розпізнавання браузера (uk-UA)"; return true;
+    } catch (e) { rec = null; src = "розпізнавання не запустилось: " + e.message; return false; }
+  }
+
+  // decide the language from what was really heard
+  function detectLang(text, avgConf) {
+    const t = (text || "").toLowerCase().replace(/\s+/g, " ").trim();
+    if (!t) return null;
+    const cyr = (t.match(/[а-яёіїєґ]/g) || []).length, lat = (t.match(/[a-z]/g) || []).length;
+    if (lat > cyr) return "Англійська";
+    // English heard by a Ukrainian recognizer comes out in Cyrillic: «хеллоу хау ар ю»
+    const EN = ["хелоу","хеллоу","хелло","хеллo","хай","хау","ар","ю","зе","зіс","зис","дис","айм","ай","іт","ит","енд","фор","май","нейм","окей","океі","єс","ес","йес","ноу","плиз","пліз","сенк","сенкс","сенкью","фенкс","гуд","бай","вонт","гоу","лайк","вер","вот","вен","вай","хуз","ду","дід","донт","кен","віз","виз","бат","джаст","ріаллі","рилі","соу","ван","ту","фрі","тайм","пліз","ох","йоу","вотс","хіз","шиз","ві","зей","зеа","ін","он","ов","ол","біг","наїс","найс","кул","бро","мен","синк","фінк","ноу","нау","хір","тудей","ленд","ворлд","лав","хоум","фуд","еппл"];
+    const RU_UK_GUARD = ["вот","он","ту","ду"]; // also common in RU/UK — count only with others
+    let en = 0, enStrong = 0;
+    t.split(/[^а-яёіїєґa-z']+/).forEach(w => { if (EN.includes(w)) { en++; if (!RU_UK_GUARD.includes(w)) enStrong++; } });
+    en += Math.floor(lat / 3);
+    if (avgConf && avgConf < 0.5) en += 2;      // the recognizer struggled — likely not Ukrainian
+    const nonEn = t.split(" ").filter(w => !EN.includes(w)).join(" ");   // letters of English-sounding words don't count
+    let uk = (nonEn.match(/[іїєґ]/g) || []).length * 2, ru = (nonEn.match(/[ыэъё]/g) || []).length * 2;
+    const words = t.split(/[^а-яёіїєґ']+/);
+    const RU = ["что","это","как","меня","тебя","сейчас","вообще","привет","хорошо","только","очень","когда","почему","ничего","нет","да","где","его","сегодня","вот","ещё","еще","конечно","может","просто","хочу","говорю","есть","был","была","если","потом","тоже","нормально","спасибо","пожалуйста"];
+    const UK = ["що","це","як","мене","тебе","зараз","взагалі","привіт","добре","тільки","дуже","коли","чому","нічого","ні","де","його","сьогодні","ось","ще","звичайно","може","просто","хочу","кажу","є","був","була","якщо","потім","теж","нормально","дякую","будь","і","й","та","вже","лише","або"];
+    words.forEach(w => { if (RU.includes(w)) ru++; if (UK.includes(w)) uk++; });
+    if (enStrong >= 1 && en >= 2 && en > uk && en > ru) return "Англійська";
+    if (ru > uk) return "Російська";
+    if (uk > ru) return "Українська";
+    return (cyr > 15 && uk === 0) ? "Російська" : "Українська";
+  }
+
+  function stopMic() {
+    try { stream?.getTracks().forEach(t => t.stop()); } catch(e){}
+    try { micCtx?.close(); } catch(e){}
+    stream = null; analyser = null; micCtx = null; realDb = null; lvl = 0;
+  }
+
+  // ---------- feedback: beeps + vibration ----------
+  let fx = null;
+  function beep(freqs) {
+    try {
+      fx = fx || new (window.AudioContext || window.webkitAudioContext)();
+      let t = fx.currentTime;
+      freqs.forEach(f => {
+        const o = fx.createOscillator(), g = fx.createGain();
+        o.type = "sine"; o.frequency.value = f;
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.12, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        o.connect(g).connect(fx.destination); o.start(t); o.stop(t + 0.13);
+        t += 0.09;
+      });
+    } catch(e){}
+  }
+  const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch(e){} };
+
+  // ---------- level ----------
+  function level(now) {
+    if (analyser) {
+      analyser.getByteTimeDomainData(dataArr);
+      let sum = 0;
+      for (let i = 0; i < dataArr.length; i++) { const v = (dataArr[i] - 128) / 128; sum += v * v; }
+      const db = 20 * Math.log10(Math.sqrt(sum / dataArr.length) + 1e-6);
+      realDb = db;
+      const v = Math.max(0, Math.min(1, (db + 58) / 46));      // -58 dB = silence, -12 dB = shouting
+      lvl = v > lvl ? v : lvl * 0.8 + v * 0.2;
+      return Math.max(0.015, lvl);
+    }
+    // if a recognizer is listening, stay flat while the person is silent
+    if (srActive && !speaking && now - lastPartial > 650) {
+      sim.env += (0.03 - sim.env) * 0.3;
+      return 0.015 + Math.random() * 0.02;
+    }
+    // simulated speech: syllables, words, breaths
+    if (now > sim.nextSwitch) {
+      const r = Math.random();
+      if (r < 0.12)      { sim.target = 0.03; sim.nextSwitch = now + 500 + Math.random() * 700; }   // breath
+      else if (r < 0.3)  { sim.target = 0.06; sim.nextSwitch = now + 120 + Math.random() * 200; }   // gap between words
+      else               { sim.target = 0.3 + Math.random() * 0.65; sim.nextSwitch = now + 80 + Math.random() * 180; } // syllable
+    }
+    sim.env += (sim.target - sim.env) * 0.3;
+    speechBoost *= 0.92;
+    // first 0.6 s — quiet, like a person drawing breath
+    const warm = srActive ? 1 : Math.min(1, (now - startT) / 600);
+    const v = (sim.env * (0.6 + Math.random() * 0.55) + speechBoost * 0.25) * warm;
+    return Math.max(0.015 + Math.random() * 0.02, Math.min(1, v));
+  }
+
+  // ---------- drawing ----------
+  function resize() {
+    const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    canvas.width = r.width * dpr; canvas.height = r.height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener("resize", resize); resize();
+
+  const BAR_W = 4, GAP = 3;
+  let lastPush = 0;
+  function draw(now) {
+    const w = canvas.clientWidth, h = canvas.clientHeight, mid = h / 2;
+    const maxBars = Math.ceil(w / (BAR_W + GAP));
+    if (state === "recording" && now - lastPush > 45) {
+      const v = level(now); bars.push(v); lastPush = now;
+      $("meter").textContent = (realDb !== null ? realDb : (-60 + v * 54)).toFixed(0) + " дБ";
+    }
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "#262c36"; ctx.fillRect(0, mid - 0.5, w, 1);
+
+    if (state === "recording" || !bars.length) {
+      const visible = bars.slice(-maxBars);
+      const offset = w - visible.length * (BAR_W + GAP);
+      visible.forEach((v, i) => {
+        const bh = Math.max(3, v * (h - 16));
+        ctx.globalAlpha = 0.35 + 0.65 * (i / visible.length);
+        ctx.fillStyle = "#ff4d5e";
+        rr(offset + i * (BAR_W + GAP), mid - bh / 2, BAR_W, bh, 2);
+      });
+    } else {
+      // after recording: whole clip squeezed to fit, like a real voice memo
+      const n = maxBars, step = bars.length / n;
+      for (let i = 0; i < n; i++) {
+        const a = Math.floor(i * step), b = Math.max(a + 1, Math.floor((i + 1) * step));
+        let m = 0; for (let j = a; j < b && j < bars.length; j++) m = Math.max(m, bars[j]);
+        const bh = Math.max(3, m * (h - 16));
+        ctx.globalAlpha = 0.9; ctx.fillStyle = "#4ade80";
+        rr(i * (BAR_W + GAP), mid - bh / 2, BAR_W, bh, 2);
+      }
+    }
+    if (state === "idle" && !bars.length) {
+      for (let i = 0; i < maxBars; i++) {
+        ctx.globalAlpha = 0.15 + 0.1 * Math.sin(now / 400 + i / 3);
+        ctx.fillStyle = "#8a93a3"; rr(i * (BAR_W + GAP), mid - 2, BAR_W, 4, 2);
+      }
+    }
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(draw);
+  }
+  function rr(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); ctx.fill();
+  }
+  requestAnimationFrame(draw);
+
+  // ---------- helpers ----------
+  const fmt = ms => { const s = Math.floor(ms / 1000); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+  const fmtS = s => Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0") + "." + Math.floor((s % 1) * 10);
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  function lang(p) {
+    if (/[ыэъё]/i.test(p)) return { name: "Російська", code: "ru-RU" };
+    if (/[іїєґ]/i.test(p)) return { name: "Українська", code: "uk-UA" };
+    if (/[а-я]/i.test(p))  return { name: "Російська", code: "ru-RU" };
+    return { name: "Англійська", code: "en-US" };
+  }
+  function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 1600); }
+  const sentence = p => { const s = p.trim(); return /[.!?…]$/.test(s) ? s : s + "."; };
+
+  function show(id, on) { $(id).classList.toggle("hidden", !on); }
+  function setState(s) {
+    state = s;
+    app.classList.toggle("recording", s === "recording");
+    show("micBlock", s === "idle" || s === "recording");
+    show("actions", s === "recorded");
+    show("proc", s === "processing");
+    show("result", s === "done");
+    show("newRec", false);
+  }
+
+  // ---------- recording ----------
+  function startRec() {
+    heard = ""; sessText = ""; dictPartial = ""; detected = null; srActive = false; speaking = false; confs = [];
+    srErrors = []; lastLen = 0; lastPartial = 0; gotMic = false; src = SR ? "—" : "у цьому браузері немає розпізнавання мови";
+    if (dictation) {
+      srActive = true; src = "диктування Claude";
+      try { dictation.start().catch(() => { srActive = false; }); } catch(e) { srActive = false; }
+    } else startSR();
+    tryMic();
+    beep([880, 1320]); buzz(30);
+    bars = []; sim.nextSwitch = 0;
+    startT = performance.now();
+    setState("recording");
+    status.textContent = "Слухаю…";
+    hint.textContent = "Натисни ще раз, щоб зупинити";
+    timerId = setInterval(() => { timeEl.textContent = fmt(performance.now() - startT); }, 200);
+    let d = 0;
+    liveId = setInterval(() => { d = (d + 1) % 4; live.textContent = "Йде запис" + ".".repeat(d); }, 400);
+  }
+
+  function stopRec() {
+    duration = performance.now() - startT;
+    if (duration < 900) { toast("Запис надто короткий"); return; }
+    clearInterval(timerId); clearInterval(liveId);
+    timeEl.textContent = fmt(duration);
+    live.textContent = "";
+    $("meter").textContent = "16 кГц · моно";
+    if (dictation) { try { dictation.stop().catch(()=>{}); } catch(e){} }
+    if (rec) { try { rec.stop(); } catch(e){} }
+    srActive = false;
+    stopMic();
+    beep([1320, 880]); buzz(20);
+    setState("recorded");
+    status.textContent = "Запис " + fmt(duration) + " готовий. Відправити на розпізнавання?";
+  }
+
+  function reset() {
+    bars = []; timeEl.textContent = "00:00"; live.textContent = "";
+    setState("idle");
+    status.textContent = "Натисни на мікрофон і говори";
+    hint.textContent = "Натисни, щоб почати запис";
+  }
+
+  // ---------- fake processing ----------
+  async function confirmRec() {
+    setState("processing");
+    status.textContent = "Обробка…";
+    const sec = duration / 1000;
+    const steps = [
+      ["Завантаження аудіо (" + Math.max(12, Math.round(sec * 32)) + " КБ)", 500],
+      ["Шумоподавлення", 600 + sec * 20],
+      ["Визначення мови", 500],
+      ["Розпізнавання мовлення", 900 + Math.min(2500, sec * 90)],
+      ["Розстановка пунктуації", 450],
+    ];
+    const box = $("steps"); box.innerHTML = "";
+    const els = steps.map(([t]) => {
+      const el = document.createElement("div"); el.className = "step";
+      el.innerHTML = '<span class="ic">○</span><span>' + t + '</span>';
+      box.appendChild(el); return el;
+    });
+    const total = steps.reduce((a, s) => a + s[1], 0);
+    let acc = 0;
+    for (let i = 0; i < steps.length; i++) {
+      els[i].className = "step active"; els[i].querySelector(".ic").innerHTML = '<div class="spin"></div>';
+      const dur = steps[i][1] * (0.8 + Math.random() * 0.4);
+      const t0 = performance.now();
+      while (performance.now() - t0 < dur) {
+        const p = (acc + (performance.now() - t0) / dur * steps[i][1]) / total;
+        $("progress").style.width = (p * 100).toFixed(1) + "%";
+        await sleep(60);
+      }
+      acc += steps[i][1];
+      els[i].className = "step done"; els[i].querySelector(".ic").textContent = "✓";
+      if (i === 2) {
+        const avg = confs.length ? confs.reduce((a, b) => a + b, 0) / confs.length : 0;
+        detected = detectLang(heard + " " + sessText + " " + dictPartial, avg);
+        els[i].querySelector("span:last-child").textContent = "Мова: " + langName();
+      }
+    }
+    $("progress").style.width = "100%";
+    await sleep(250);
+    showResult();
+  }
+
+  let repeats = 1, fullText = "";
+  async function showResult() {
+    setState("done");
+    status.textContent = "Готово";
+    const sec = duration / 1000;
+    repeats = Math.max(1, Math.round(sec / 1.8));
+    const shown = Math.min(repeats, 12);
+    fullText = Array(repeats).fill(sentence(phrase)).join(" ");
+    const visibleText = Array(shown).fill(sentence(phrase)).join(" ") + (repeats > shown ? " …" : "");
+
+    const t = $("text"); t.innerHTML = "";
+    const span = document.createElement("span"), caret = document.createElement("span");
+    caret.className = "caret"; t.append(span, caret);
+    for (let i = 1; i <= visibleText.length; i++) {
+      span.textContent = visibleText.slice(0, i);
+      await sleep(visibleText[i - 1] === " " ? 20 : 32);
+    }
+    caret.remove();
+
+    const L = lang(phrase);
+    const words = phrase.trim().split(/\s+/).length * repeats;
+    $("meta").innerHTML =
+      `<span class="chip">⏱ ${fmt(duration)}</span>` +
+      `<span class="chip">🌐 ${langName()}</span>` +
+      `<span class="chip">📝 ${words} ${words % 10 === 1 && words % 100 !== 11 ? "слово" : (words % 10 >= 2 && words % 10 <= 4 && (words % 100 < 10 || words % 100 >= 20) ? "слова" : "слів")}</span>` +
+      `<span class="chip">🎯 ${(96.5 + Math.random() * 3.2).toFixed(1)}%</span>`;
+    show("meta", true);
+
+    // timestamped segments
+    const segs = $("segs"); segs.innerHTML = "";
+    const segLen = sec / repeats;
+    for (let i = 0; i < repeats; i++) {
+      const a = i * segLen, b = Math.min(sec, (i + 1) * segLen);
+      const row = document.createElement("div"); row.className = "seg";
+      row.innerHTML = `<time>${fmtS(a)} – ${fmtS(b)}</time><span>${escapeHtml(sentence(phrase))}</span><span class="conf">${(94 + Math.random() * 5.8).toFixed(0)}%</span>`;
+      segs.appendChild(row);
+    }
+    show("segWrap", true);
+    show("resActions", true);
+    $("listen").classList.toggle("hidden", !(tts || "speechSynthesis" in window));
+    show("newRec", true);
+  }
+  const escapeHtml = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  // ---------- listen / copy ----------
+  $("listen").addEventListener("click", () => {
+    const text = Array(Math.min(repeats, 6)).fill(sentence(phrase)).join(" ");
+    const L = lang(phrase);
+    if (tts) {
+      tts.speak(text, { language: L.code.slice(0, 2) }).catch(() => speakWeb(text, L.code));
+    } else speakWeb(text, L.code);
+  });
+  function speakWeb(text, code) {
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = code;
+      const v = speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith(code.slice(0, 2)));
+      if (v) u.voice = v;
+      u.rate = 0.95;
+      speechSynthesis.speak(u);
+    } catch(e) { toast("Відтворення недоступне"); }
+  }
+  $("copy").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(fullText); toast("Скопійовано"); }
+    catch(e) { toast("Не вдалося скопіювати"); }
+  });
+
+  // ---------- buttons ----------
+  $("mic").addEventListener("click", () => {
+    if (state === "idle") startRec();
+    else if (state === "recording") stopRec();
+  });
+  $("again").addEventListener("click", reset);
+  $("confirm").addEventListener("click", confirmRec);
+  $("newRec").addEventListener("click", () => { try { speechSynthesis.cancel(); } catch(e){} try { tts && tts.stop(); } catch(e){} reset(); });
+
+  // ---------- secret diagnostics: hold "Розпізнаний текст" for 1 s ----------
+  let dbgT = null;
+  const dbgLabel = $("result").querySelector(".label");
+  dbgLabel.addEventListener("pointerdown", () => { dbgT = setTimeout(() => {
+    const txt = (heard + " " + sessText + " " + dictPartial).trim();
+    const avg = confs.length ? (confs.reduce((a, b) => a + b, 0) / confs.length).toFixed(2) : "немає";
+    $("dbgText").textContent =
+      "Джерело: " + src +
+      (srErrors.length ? "\nПомилки: " + srErrors.join(", ") : "") +
+      "\nПочуто: " + (txt ? "«" + txt + "»" : "нічого") +
+      "\nВпевненість: " + avg +
+      "\nХвиля: " + (gotMic ? "справжня гучність з мікрофона" : "імітація (мікрофон недоступний)") +
+      "\nМова: " + (detected || "не визначено → Українська за замовчуванням") +
+      "\nАдреса: " + location.protocol;
+    show("dbg", true); buzz(15);
+  }, 1000); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(e => dbgLabel.addEventListener(e, () => clearTimeout(dbgT)));
+  $("dbgClose").addEventListener("click", () => show("dbg", false));
+
+  // ---------- secret settings: hold the logo/title for 1 s ----------
+  let holdT = null;
+  const brand = $("brand");
+  const openSheet = () => { $("phrase").value = phrase; show("sheet", true); buzz(15); };
+  brand.addEventListener("pointerdown", () => { holdT = setTimeout(openSheet, 1000); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(e => brand.addEventListener(e, () => clearTimeout(holdT)));
+  brand.addEventListener("contextmenu", e => e.preventDefault());
+  $("cancelSet").addEventListener("click", () => show("sheet", false));
+  $("saveSet").addEventListener("click", () => {
+    phrase = $("phrase").value.trim() || DEFAULT;
+    try { localStorage.setItem("prank_phrase", phrase); } catch(e){}
+    show("sheet", false); toast("Збережено");
+  });
+})();
+</script>
+</body>
+</html>
